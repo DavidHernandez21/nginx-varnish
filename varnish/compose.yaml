@@ -1,0 +1,68 @@
+version: "3.9"
+services:
+  varnish:
+    image: varnish:stable
+    container_name: varnish
+    volumes:
+      - "./default.vcl:/etc/varnish/default.vcl"
+    tmpfs:
+      - /var/lib/varnish:exec
+    environment:
+      - VARNISH_SIZE=2G  
+    command: ["-p", "default_keep=300"]
+    command: ["-a", ":8081"]
+    networks:
+      - nginx_compose
+    expose:
+      - '8081'
+    depends_on:
+      - "nginx-proxy"
+  nginx-ssl:
+    image: nginx
+    container_name: nginx-ssl
+    ports:
+      - '5000:5000'
+      - '443:443'
+    volumes:
+      - './nginx-ssl/nginx.conf:/etc/nginx/nginx.conf:ro'
+      - '../ssl/certs:/etc/nginx/certs:ro'
+    networks:
+      - nginx_compose
+    depends_on:
+      - "varnish"
+  nginx-proxy:
+    image: nginx
+    volumes:
+      - './nginx-proxy/nginx.conf:/etc/nginx/nginx.conf:ro'
+    container_name: nginx-proxy
+    expose:
+      - '8082'
+    networks:
+      - nginx_compose
+    depends_on:
+      - "server1" 
+      - "server2"
+  server1:
+    image: nginx
+    volumes:
+      - '../server1/server1.html:/etc/nginx/html/index.html'
+      - '../server1/nginx.conf:/etc/nginx/nginx.conf:ro'
+    container_name: server1
+    networks:
+      - nginx_compose
+    expose:
+      - '8080'
+  server2:
+    image: nginx
+    volumes:
+      - '../server2/server2.html:/etc/nginx/html/index.html'
+      - '../server2/nginx.conf:/etc/nginx/nginx.conf:ro'
+    container_name: server2
+    networks:
+      - nginx_compose
+    expose:
+      - '8080'
+
+networks:
+  nginx_compose:
+    driver: bridge
